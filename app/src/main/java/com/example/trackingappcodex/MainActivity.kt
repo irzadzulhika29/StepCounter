@@ -1,47 +1,104 @@
 package com.example.trackingappcodex
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.trackingappcodex.ui.theme.TrackingAppCodexTheme
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.trackingappcodex.ui.StepTrackerApp
+import com.example.trackingappcodex.ui.theme.StepTrackerTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: StepTrackerViewModel by viewModels {
+        StepTrackerViewModel.Factory(application)
+    }
+
+    private val permissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                viewModel.onPermissionGranted()
+            } else {
+                viewModel.onPermissionDenied()
+            }
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        handlePermissionIfNeeded()
         setContent {
-            TrackingAppCodexTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+            StepTrackerTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+                    var showPermissionRationale by remember { mutableStateOf(false) }
+                    StepTrackerApp(
+                        uiState = uiState,
+                        onToggleTracking = { enabled ->
+                            if (enabled) {
+                                if (checkRecognitionPermission()) {
+                                    viewModel.startTracking()
+                                } else {
+                                    showPermissionRationale = shouldShowRequestPermissionRationale(Manifest.permission.ACTIVITY_RECOGNITION)
+                                    requestRecognitionPermission()
+                                }
+                            } else {
+                                viewModel.stopTracking()
+                            }
+                        },
+                        onResetSteps = viewModel::resetBaseline,
+                        onDismissPermissionDialog = {
+                            showPermissionRationale = false
+                            viewModel.onPermissionDialogDismissed()
+                        },
+                        onRetryPermissionRequest = {
+                            showPermissionRationale = false
+                            requestRecognitionPermission()
+                        },
+                        showPermissionDialog = uiState.showPermissionDialog,
+                        showPermissionRationale = showPermissionRationale
                     )
                 }
             }
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    private fun handlePermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !checkRecognitionPermission()) {
+            requestRecognitionPermission()
+        } else {
+            viewModel.onPermissionGranted()
+        }
+    }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    TrackingAppCodexTheme {
-        Greeting("Android")
+    private fun checkRecognitionPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            true
+        } else {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACTIVITY_RECOGNITION
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestRecognitionPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissionLauncher.launch(Manifest.permission.ACTIVITY_RECOGNITION)
+        }
     }
 }
