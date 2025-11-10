@@ -1,3 +1,16 @@
 <resources>
-    <string name="app_name">TrackingAppCodex</string>
+    <string name="app_name">Step Tracker</string>
+    <string name="status_tracking">Tracking steps...</string>
+    <string name="status_idle">Tracking paused</string>
+    <string name="status_sensor_unavailable">Step sensor is not available on this device.</string>
+    <string name="action_start">Start tracking</string>
+    <string name="action_stop">Stop tracking</string>
+    <string name="insights_title">Daily insights</string>
+    <string name="insights_distance">Approx. distance: %1$s km</string>
+    <string name="insights_calories">Estimated calories burned: %1$s kcal</string>
+    <string name="permission_title">Activity recognition permission</string>
+    <string name="permission_message">We need activity recognition access to read your step count.</string>
+    <string name="permission_rationale">To count your steps we require access to the step counter sensor. Please grant the permission.</string>
+    <string name="reset_steps">Reset steps</string>
+    <string name="walking_icon">Walking icon</string>
 </resources>
